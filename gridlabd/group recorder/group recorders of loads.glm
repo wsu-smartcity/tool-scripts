@@ -1,0 +1,32 @@
+object group_recorder {
+	//flags DELTAMODE;
+
+	name loads_voltages_A_recorder;
+	group "class=load";
+	property voltage_A;
+	file loads_volts_A.csv;
+	interval 1;
+	limit 10000000;
+}
+
+object group_recorder {
+	//flags DELTAMODE;
+
+	name loads_voltages_B_recorder;
+	group "class=load";
+	property voltage_B;
+	file loads_volts_B.csv;
+	interval 1;
+	limit 10000000;
+}
+
+object group_recorder {
+	//flags DELTAMODE;
+
+	name loads_voltages_C_recorder;
+	group "class=load";
+	property voltage_C;
+	file loads_volts_C.csv;
+	interval 1;
+	limit 10000000;
+}
