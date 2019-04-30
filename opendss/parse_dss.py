@@ -218,3 +218,8 @@ if __name__ == '__main__':
                         195,92,90,88,82,83])
     mg4_kw_total, mg4_kvar_total = p.sum_load_microgrid(mg4_bus_list)
     print("Microgrid #4: {} kW, {} kVar".format(mg4_kw_total,mg4_kvar_total))
+
+    #--MG_ALL
+    mg_all_bus_list = str(list(range(1000)))
+    mg_all_kw_total, mg_all_kvar_total = p.sum_load_microgrid(mg_all_bus_list)
+    print("Microgrid #all: {} kW, {} kVar".format(mg_all_kw_total,mg_all_kvar_total))
