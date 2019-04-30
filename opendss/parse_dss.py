@@ -177,7 +177,7 @@ class DssParser:
             if cur_bus_id_str in mg_bus_list:
                 mg_kw_total += float(cur_item["kw"])
                 mg_kvar_total += float(cur_item["kvar"])
-
+                
         return mg_kw_total, mg_kvar_total
 
 
@@ -190,33 +190,36 @@ if __name__ == '__main__':
     #print(p.loads_list)
     
     #--MG2
-    mg2_bus_list = str([48,47,49,50,51,151,
+    mg2_bus_list = [48,47,49,50,51,151,
                         44,45,46,
                         42,43,
                         40,41,
                         135,35,39,
-                        37,36,38])
-    mg2_kw_total, mg2_kvar_total = p.sum_load_microgrid(mg2_bus_list)
+                        37,36,38]
+    mg2_bus_str_list = list(map(str,mg2_bus_list))
+    mg2_kw_total, mg2_kvar_total = p.sum_load_microgrid(mg2_bus_str_list)
     print("Microgrid #2: {} kW, {} kVar".format(mg2_kw_total,mg2_kvar_total))
 
     #--MG3
-    mg3_bus_list = str([300,111,
+    mg3_bus_list = [300,111,
                         108,109,110,112,113,
                         105,106,107,114,
                         101,102,103,104,
-                        197])
-    mg3_kw_total, mg3_kvar_total = p.sum_load_microgrid(mg3_bus_list)
+                        197]
+    mg3_bus_str_list = list(map(str,mg3_bus_list))
+    mg3_kw_total, mg3_kvar_total = p.sum_load_microgrid(mg3_bus_str_list)
     print("Microgrid #3: {} kW, {} kVar".format(mg3_kw_total,mg3_kvar_total))
 
     #--MG4
-    mg4_bus_list = str([97,98,99,100,450,451,
+    mg4_bus_list = [97,98,99,100,450,451,
                         67,68,69,70,71,
                         72,73,74,75,
                         76,77,78,79,
                         96,94,80,85,
                         95,93,91,89,87,86,81,84,
-                        195,92,90,88,82,83])
-    mg4_kw_total, mg4_kvar_total = p.sum_load_microgrid(mg4_bus_list)
+                        195,92,90,88,82,83]
+    mg4_bus_str_list = list(map(str,mg4_bus_list))
+    mg4_kw_total, mg4_kvar_total = p.sum_load_microgrid(mg4_bus_str_list)
     print("Microgrid #4: {} kW, {} kVar".format(mg4_kw_total,mg4_kvar_total))
 
     #--MG_ALL
