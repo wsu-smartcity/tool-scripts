@@ -38,11 +38,17 @@ class GlmParser:
     GFA_enable true;\n\
     GFA_freq_low_trip {} Hz;\n\
     GFA_reconnect_time {} s;\n\
-    GFA_freq_disconnect_time {} s;\n"
+    GFA_freq_disconnect_time {} s;\n\
+    {}\n"
+
+    def clean_buffer(self):
+        self.all_loads_list = []
+        self.all_loads_p_list = []
 
     def parse_load(self, lines_str):
         """Parse and Package All Load Objects
         """
+        self.clean_buffer()
         self.all_loads_list = re.findall(r'object\s*load.*?{(.*?)}',lines_str,flags=re.DOTALL)
 
         for cur_obj_str in self.all_loads_list:
@@ -59,6 +65,7 @@ class GlmParser:
     def parse_triload(self, lines_str):
         """Parse and Package All Load Objects
         """
+        self.clean_buffer()
         self.all_loads_list = re.findall(r'object\s*triplex_load.*?{(.*?)}',lines_str,flags=re.DOTALL)
 
         for cur_obj_str in self.all_loads_list:
@@ -88,7 +95,7 @@ class GlmParser:
         self.parse_triload(str_file_woc)
 
     def add_ufls_gfas(self, output_glm_path_fn,
-                      ufls_pct,ufls_th,ufls_dly,gfa_rc_time,
+                      ufls_pct,ufls_th,ufls_dly,gfa_rc_time,gfa_extra_str='',
                       flag_triload=False, flag_des=True):
         """ flag_des is reserved for extension
         """
@@ -99,6 +106,7 @@ class GlmParser:
         total_loads_p = sum(self.all_loads_p_list)
         ufls_p = [x/100*total_loads_p for x in ufls_pct];
         ufls_p_asg = [0]*len(ufls_p)
+        ufls_gfa_num = [0]*len(ufls_p)
         all_loads_ufls_tag = [-1]*len(self.all_loads_p_list)
         
         for cur_ite in range(len(ufls_p)):
@@ -107,8 +115,11 @@ class GlmParser:
                 if all_loads_ufls_tag[cur_sorted_ind] >= 0:
                     continue
                 cur_load_p = self.all_loads_p_list[cur_sorted_ind]
+                if cur_load_p == 0:
+                    continue
                 if (ufls_p_asg[cur_ite]+cur_load_p) <= ufls_p[cur_ite]:
                     ufls_p_asg[cur_ite] += cur_load_p
+                    ufls_gfa_num[cur_ite] += 1
                     all_loads_ufls_tag[cur_sorted_ind] = cur_ite
 
         #==Display & Export
@@ -119,17 +130,28 @@ class GlmParser:
         print('Total Load in kW: {}'.format(total_loads_p/1000))
         print('Assigned UFLS in kW: {}'.format([x/1000 for x in ufls_p_asg]))
         print('Assigned UFLS in %: {}'.format([x/total_loads_p*100 for x in ufls_p_asg]))
+        print('Number of GFA devices: {}'.format(ufls_gfa_num))
         
-        self.export_glm_with_gfas(output_glm_path_fn,all_loads_ufls_tag,flag_triload)
+        self.export_glm_with_gfas(output_glm_path_fn,all_loads_ufls_tag,gfa_extra_str,flag_triload)
 
-    def export_glm_with_gfas(self, output_glm_path_fn, all_loads_ufls_tag,flag_triload):
-        hf_output = open(output_glm_path_fn,'w+')
+    def prepare_export_file(self,file_pn):
+        if os.path.exists(file_pn):
+            os.remove(file_pn)
+            print("The old '{}' file is deleted!".format(file_pn))
+
+        hf_output = open(file_pn,'w')
+        print("The new '{}' file is created!".format(file_pn))
+        return hf_output
+
+    def export_glm_with_gfas(self, output_glm_path_fn, all_loads_ufls_tag,gfa_extra_str,flag_triload):
+        hf_output = self.prepare_export_file(output_glm_path_fn)
         for ld_str, gp in zip(self.all_loads_list,all_loads_ufls_tag):
             #print(ld_str)
             if gp >= 0:
                 cur_gfa_str = self.sobj_gfa_tpl_str.format(ufls_th[gp],
                                                       gfa_rc_time,
-                                                      ufls_dly[gp])
+                                                      ufls_dly[gp],
+                                                      gfa_extra_str)
             else:
                 cur_gfa_str = ''
 
@@ -145,20 +167,29 @@ class GlmParser:
 
 if __name__ == '__main__':
     #==Parameters
-    glm_file_path_fn = 'mg2_parts.glm' #Note that the filename cannot end with slash(es)
-    output_glm_path_fn = 'mg2_parts_gfa.glm'
+    glm_file_path_fn = 'loads.glm' #Note that the filename cannot end with slash(es)
+    output_glm_path_fn = 'loads_gfa.glm'
 
     ufls_pct = [10, 15, 10] #Unit: %
     ufls_th = [59.0, 58.5, 58.0] #Unit: Hz
     ufls_dly = [0.1, 0.05, 0.08] #Unit: sec
+
     gfa_rc_time = 1000 #Unit: sec #Set this to a large value to avoid reconnection.
+    gfa_extra_str = "\n\
+    GFA_freq_high_trip 70 Hz;\n\
+    GFA_volt_low_trip 0.5;\n\
+    GFA_volt_high_trip 1.5;\n\
+    GFA_volt_disconnect_time 0.08 s;"
 
     #==Test & Demo
     p = GlmParser()
     
     p.read_content_load(glm_file_path_fn)
-    p.add_ufls_gfas(output_glm_path_fn,ufls_pct,ufls_th,ufls_dly,gfa_rc_time)
+    p.add_ufls_gfas(output_glm_path_fn,ufls_pct,ufls_th,ufls_dly,gfa_rc_time,gfa_extra_str)
 
-    #p.read_content_triload('triplex_loads.glm')
-    #triload_flag = True
-    #p.add_ufls_gfas('triplex_loads_gfa.glm',ufls_pct,ufls_th,ufls_dly,gfa_rc_time,triload_flag)
+    """
+    p.read_content_triload('triplex_loads.glm')
+    triload_flag = True
+    p.add_ufls_gfas('triplex_loads_gfa.glm',ufls_pct,ufls_th,ufls_dly,gfa_rc_time,triload_flag)
+    """
+    
