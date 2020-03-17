@@ -568,11 +568,11 @@ if __name__ == '__main__':
     #test_add_ufls_gfas()
     #test_separate_load_objs()
     #test_adjust_load_amount()
-    #test_read_content_load()
+    test_read_content_load()
     #test_read_content_node()
     #test_read_zone_info()
 
     #test_mapping_zone_info()
-    test_pick_node_from_segments()
+    #test_pick_node_from_segments()
 
     #test_load_zone_info()
