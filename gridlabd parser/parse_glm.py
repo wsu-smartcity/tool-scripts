@@ -25,6 +25,7 @@ class GlmParser:
         #==Store
         self.all_loads_list = []
         self.all_loads_p_list = []
+        self.all_loads_q_list = []
 
         self.all_nodes_list = []
 
@@ -59,6 +60,7 @@ class GlmParser:
     def clean_load_buffer(self):
         self.all_loads_list = []
         self.all_loads_p_list = []
+        self.all_loads_q_list = []
 
     def extract_attr(self,attr_str,src_str):
         '''Extract the attribute information'''
@@ -138,6 +140,7 @@ class GlmParser:
             self.all_loads_p_list.append(cur_obj_p_sum)
             self.all_loads_p_sum += cur_obj_p_sum
 
+            self.all_loads_q_list.append(cur_obj_q_sum)
             self.all_loads_q_sum += cur_obj_q_sum
 
     def parse_triload(self, lines_str):
@@ -499,10 +502,14 @@ def test_mapping_zone_info():
 
     print(new_node_zone_phase_dict['n256851437_1207'])
 
+    #--accounting
+    seg_loading_p_dict = {}
+    seg_loading_q_dict = {}
+
     #--load mapping
     p.read_content_load(load_glm_path_fn)
     
-    for cur_load_name_str in p.all_loads_names_list:
+    for cur_load_name_str, cur_load_p, cur_load_q in zip(p.all_loads_names_list, p.all_loads_p_list, p.all_loads_q_list):
         cur_load_name_feeder_list = re.findall('\d+',cur_load_name_str)
         cur_load_name_key = cur_load_name_feeder_list[0]
         if cur_load_name_key in load_zone_dict.keys():
@@ -510,9 +517,20 @@ def test_mapping_zone_info():
             new_load_zone_dict[cur_load_name_str] = cur_zone_info
             cur_phase_str = p.all_loads_phases_dict[cur_load_name_str]
             new_load_zone_phase_dict[cur_load_name_str] = [cur_zone_info,cur_phase_str]
+
+            if cur_zone_info in seg_loading_p_dict.keys():
+                seg_loading_p_dict[cur_zone_info] += cur_load_p
+                seg_loading_q_dict[cur_zone_info] += cur_load_q
+            else:
+                seg_loading_p_dict[cur_zone_info] = cur_load_p
+                seg_loading_q_dict[cur_zone_info] = cur_load_q
         else:
             new_load_zone_missing_list.append(cur_load_name_str)
 
+    print('~~~~~~~~Segment Loading:')
+    print(seg_loading_p_dict)
+
+    print('~~~~~~~~Loads that have no segment assigned:')
     print(new_load_zone_missing_list)
     #print(new_load_zone_phase_dict)
 
@@ -530,7 +548,7 @@ def test_mapping_zone_info():
     print(len(new_node_zone_dict))
     print(len(new_load_zone_dict))
 
-    return new_zone_node_3ph_dict
+    return new_zone_node_3ph_dict, seg_loading_p_dict, seg_loading_q_dict
 
 def test_load_zone_info():
     zone_info_dicts_pickle_path_fn = r'D:\UC3_S1_Tap12_[with MG][Clean][LessLoad]\zone_info'
@@ -568,11 +586,22 @@ if __name__ == '__main__':
     #test_add_ufls_gfas()
     #test_separate_load_objs()
     #test_adjust_load_amount()
-    test_read_content_load()
+    #test_read_content_load()
     #test_read_content_node()
     #test_read_zone_info()
 
-    #test_mapping_zone_info()
+    _, seg_loading_p_dict, seg_loading_q_dict = test_mapping_zone_info()
+    total_load_p = 0
+    total_load_q = 0
+    for key, val in seg_loading_p_dict.items():
+        total_load_p += val
+        
+        val_q = seg_loading_q_dict[key]
+        total_load_q += val_q
+        
+        print(f"Segment {key}: {val/1e3} (kW), {val_q/1e3} (kVAR)")
+    print(f"Total load of all segments: {total_load_p/1e3} (kW), {total_load_q/1e3} (kVAR)")
+    
     #test_pick_node_from_segments()
 
     #test_load_zone_info()
