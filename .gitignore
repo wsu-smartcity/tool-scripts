@@ -1,4 +1,5 @@
 *.json
+*.zip
 
 # Comment that shows how to use *
 # !duke_uc*_s*.glm

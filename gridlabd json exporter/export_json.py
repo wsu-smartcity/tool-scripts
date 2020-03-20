@@ -63,6 +63,7 @@ class JsonExporter:
         cc_ep_pref = 'ctrl_'
 
         self.cc_ep_list = []
+        self.cc_list_all_key = []
         for cur_gld_ep_name in self.gld_list_all_key:
             cur_cc_ep_dict = {}
 
@@ -72,6 +73,60 @@ class JsonExporter:
             cur_cc_ep_dict['type'] = cc_ep_type
 
             self.cc_ep_list.append(cur_cc_ep_dict)
+            self.cc_list_all_key.append(cur_cc_ep_dict['name'])
+
+    def get_ns3_endpoints(self, ns3_ep_info="0", ns3_ep_global=False):
+        """
+        """
+        self.ns3_ep_list = []
+
+        # --adding the endpoints defined in the GLD json file
+        for cur_gld_ep_name in self.gld_list_all_key:
+            cur_gld_ep_dict = {}
+            cur_gld_ep_dict['name'] = f"{self.gld_json_config_name}/{cur_gld_ep_name}"
+            cur_gld_ep_dict['info'] = ns3_ep_info
+            cur_gld_ep_dict['global'] = ns3_ep_global
+
+            self.ns3_ep_list.append(cur_gld_ep_dict)
+
+        # --adding the endpoints defined in the CC json file
+        for cur_cc_ep_name in self.cc_list_all_key:
+            cur_cc_ep_dict = {}
+            cur_cc_ep_dict['name'] = f"{self.cc_json_config_name}/{cur_cc_ep_name}"
+            cur_cc_ep_dict['info'] = ns3_ep_info
+            cur_cc_ep_dict['global'] = ns3_ep_global
+
+            self.ns3_ep_list.append(cur_cc_ep_dict)
+
+    def get_ns3_sub_filters(self, list_all_key, json_config_name,
+                            ns3_filter_oper="reroute", ns3_filter_prop_name="newdestination"):
+
+        # --adding filters
+        for cur_gld_ep_name in list_all_key:
+            cur_ns3_filter_dict = {}
+            cur_ns3_filter_dict['name'] = f"{self.ns3_filters_pref}{json_config_name}_{cur_gld_ep_name}"
+            cur_ns3_filter_dict['sourcetargets'] = [
+                f"{json_config_name}/{cur_gld_ep_name}"]
+            cur_ns3_filter_dict['operation'] = ns3_filter_oper
+
+            # ~~property dict
+            cur_ns3_filter_prop_dict = {}
+            cur_ns3_filter_prop_dict['name'] = ns3_filter_prop_name
+            cur_ns3_filter_prop_dict['value'] = f"{self.ns3_json_config_name}/{json_config_name}/{cur_gld_ep_name}"
+
+            cur_ns3_filter_dict['properties'] = cur_ns3_filter_prop_dict
+
+            # ~~assemble
+            self.ns3_filters_list.append(cur_ns3_filter_dict)
+
+    def get_ns3_filters(self):
+        self.ns3_filters_pref = "filter_"
+        self.ns3_filters_list = []
+
+        self.get_ns3_sub_filters(self.gld_list_all_key,
+                                 self.gld_json_config_name)
+        self.get_ns3_sub_filters(self.cc_list_all_key,
+                                 self.cc_json_config_name)
 
     def export_gld_json(self, output_json_path_fn, json_data_settings_dic, ep_all_list, list_all_key):
         # --record
@@ -108,6 +163,25 @@ class JsonExporter:
         # --dump
         self.dump_json(output_json_path_fn, self.cc_data)
 
+    def export_ns3_json(self, output_json_path_fn, json_data_settings_dic):
+        # --record
+        self.ns3_json_config_name = json_data_settings_dic['name']
+
+        # --prepare
+        self.ns3_data = {}
+        self.ns3_data.update(json_data_settings_dic)
+
+        # --end points
+        self.get_ns3_endpoints()
+        self.ns3_data["endpoints"] = self.ns3_ep_list
+
+        # --filters
+        self.get_ns3_filters()
+        self.ns3_data["filters"] = self.ns3_filters_list
+
+        # --dump
+        self.dump_json(output_json_path_fn, self.ns3_data)
+
 
 def test_export_gld_json():
     # ==Parameters
@@ -115,12 +189,13 @@ def test_export_gld_json():
     output_json_path_fn = 'Duke_gld_config.json'
 
     # --file configs
-    json_data_settings_dic = {'name': 'GLD',
-                              'coreType': 'zmq',
-                              'loglevel': 7,
-                              'period': 1e-2,
-                              'wait_for_current_time_update': True,
-                              }
+    json_data_settings_dic = {
+        'name': 'GLD',
+        'coreType': 'zmq',
+        'loglevel': 7,
+        'period': 1e-2,
+        'wait_for_current_time_update': True,
+    }
     # --end Points
     # ~~switches
     ep_property = "status"
@@ -169,17 +244,36 @@ def test_export_cc_json(p):
     output_json_path_fn = 'Duke_cc_config.json'
 
     # --file configs
-    json_data_settings_dic = {'name': 'CC',
-                              'coreType': 'zmq',
-                              'loglevel': 7,
-                              'period': 1e-2,
-                              'wait_for_current_time_update': True,
-                              }
+    json_data_settings_dic = {
+        'name': 'CC',
+        'coreType': 'zmq',
+        'loglevel': 7,
+        'period': 1e-2,
+        'wait_for_current_time_update': True
+    }
 
     # ==Export
     p.export_cc_json(output_json_path_fn, json_data_settings_dic)
 
 
+def test_export_ns3_json(p):
+    # ==Parameters
+    output_json_path_fn = 'Duke_ns3_config.json'
+
+    # --file configs
+    json_data_settings_dic = {
+        "name": "ns3",
+        "coreType": "zmq",
+        "loglevel": 7,
+        "period": 1e-9,
+        "wait_for_current_time_update": True
+    }
+
+    # ==Export
+    p.export_ns3_json(output_json_path_fn, json_data_settings_dic)
+
+
 if __name__ == '__main__':
     p = test_export_gld_json()
     test_export_cc_json(p)
+    test_export_ns3_json(p)
