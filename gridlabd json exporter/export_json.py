@@ -13,17 +13,32 @@ import warnings
 class JsonExporter:
     """Export the .json file(s)"""
 
-    def __init__(self):
+    def __init__(self,
+                 cc_ep_pref='ctrl_',
+                 ns3_filters_pref='filter_',
+                 sort_flag=False, indent_val=4):
+        """Init the settings
         """
-        """
+        # == for json.dump()
+        self.json_dump_sort_key = sort_flag
+        self.json_dump_indent_val = indent_val
 
-    def dump_json(self, json_path_fn, json_data_dic,
-                  sort_flag=False, indent_val=4):
+        # == for CC json file
+        self.param_cc_ep_pref = cc_ep_pref
+        self.param_cc_ep_type = 'string'
+        self.param_cc_ep_global = False
+
+        # == for ns3 json file
+        self.param_ns3_filters_pref = ns3_filters_pref
+        self.param_ns3_filter_oper = "reroute"
+        self.param_ns3_filter_prop_name = "newdestination"
+
+    def dump_json(self, json_path_fn, json_data_dic):
         """Dump the data dictionary into a json file
         """
         with open(json_path_fn, 'w') as hf_json:
             json.dump(json_data_dic, hf_json,
-                      sort_keys=sort_flag, indent=indent_val)
+                      sort_keys=self.json_dump_sort_key, indent=self.json_dump_indent_val)
 
     @staticmethod
     def get_gld_endpoints(gld_comp_list, gld_ep_obj_dic, ep_property,
@@ -55,22 +70,25 @@ class JsonExporter:
             glp_ep_list.append(cur_ep_dic)
         return glp_ep_list
 
-    def get_cc_endpoints(self, cc_ep_type='string', cc_ep_global=False):
+    def update_param_cc_endpoints(self, cc_ep_pref, cc_ep_type='string', cc_ep_global=False):
+        self.param_cc_ep_pref = cc_ep_pref
+        self.param_cc_ep_type = cc_ep_type
+        self.param_cc_ep_global = cc_ep_global
+
+    def get_cc_endpoints(self):
         """
         Member method for adding a controller with respect to each endpoint defined in the GLD json file
         """
         # ~~controllers
-        cc_ep_pref = 'ctrl_'
-
         self.cc_ep_list = []
         self.cc_list_all_key = []
         for cur_gld_ep_name in self.gld_list_all_key:
             cur_cc_ep_dict = {}
 
-            cur_cc_ep_dict['global'] = cc_ep_global
-            cur_cc_ep_dict['name'] = cc_ep_pref + cur_gld_ep_name
+            cur_cc_ep_dict['global'] = self.param_cc_ep_global
+            cur_cc_ep_dict['name'] = self.param_cc_ep_pref + cur_gld_ep_name
             cur_cc_ep_dict['destination'] = f"{self.gld_json_config_name}/{cur_gld_ep_name}"
-            cur_cc_ep_dict['type'] = cc_ep_type
+            cur_cc_ep_dict['type'] = self.param_cc_ep_type
 
             self.cc_ep_list.append(cur_cc_ep_dict)
             self.cc_list_all_key.append(cur_cc_ep_dict['name'])
@@ -98,20 +116,23 @@ class JsonExporter:
 
             self.ns3_ep_list.append(cur_cc_ep_dict)
 
-    def get_ns3_sub_filters(self, list_all_key, json_config_name,
-                            ns3_filter_oper="reroute", ns3_filter_prop_name="newdestination"):
+    def update_param_ns3_filters(self, ns3_filters_pref, ns3_filter_oper="reroute", ns3_filter_prop_name="newdestination"):
+        self.param_ns3_filters_pref = ns3_filters_pref
+        self.param_ns3_filter_oper = ns3_filter_oper
+        self.param_ns3_filter_prop_name = ns3_filter_prop_name
 
+    def get_ns3_sub_filters(self, list_all_key, json_config_name):
         # --adding filters
         for cur_gld_ep_name in list_all_key:
             cur_ns3_filter_dict = {}
-            cur_ns3_filter_dict['name'] = f"{self.ns3_filters_pref}{json_config_name}_{cur_gld_ep_name}"
+            cur_ns3_filter_dict['name'] = f"{self.param_ns3_filters_pref}{json_config_name}_{cur_gld_ep_name}"
             cur_ns3_filter_dict['sourcetargets'] = [
                 f"{json_config_name}/{cur_gld_ep_name}"]
-            cur_ns3_filter_dict['operation'] = ns3_filter_oper
+            cur_ns3_filter_dict['operation'] = self.param_ns3_filter_oper
 
             # ~~property dict
             cur_ns3_filter_prop_dict = {}
-            cur_ns3_filter_prop_dict['name'] = ns3_filter_prop_name
+            cur_ns3_filter_prop_dict['name'] = self.param_ns3_filter_prop_name
             cur_ns3_filter_prop_dict['value'] = f"{self.ns3_json_config_name}/{json_config_name}/{cur_gld_ep_name}"
 
             cur_ns3_filter_dict['properties'] = cur_ns3_filter_prop_dict
@@ -120,7 +141,6 @@ class JsonExporter:
             self.ns3_filters_list.append(cur_ns3_filter_dict)
 
     def get_ns3_filters(self):
-        self.ns3_filters_pref = "filter_"
         self.ns3_filters_list = []
 
         self.get_ns3_sub_filters(self.gld_list_all_key,
@@ -152,6 +172,7 @@ class JsonExporter:
         self.cc_data.update(json_data_settings_dic)
 
         # --end points
+        # p.update_param_cc_endpoints(cc_ep_pref='ctr_') # left here as a demo
         p.get_cc_endpoints()
 
         if not hasattr(self, 'cc_ep_list'):
@@ -183,7 +204,7 @@ class JsonExporter:
         self.dump_json(output_json_path_fn, self.ns3_data)
 
 
-def test_export_gld_json():
+def test_export_gld_json(p):
     # ==Parameters
     # --file path & name
     output_json_path_fn = 'Duke_gld_config.json'
@@ -231,12 +252,9 @@ def test_export_gld_json():
     ep_all_list = ep_cbs_list + ep_rcls_list + ep_invs_list
     list_all_key = list_cbs_key + list_rcls_key + list_invs_key
 
-    # ==Init & Export
-    p = JsonExporter()
+    # ==Export
     p.export_gld_json(output_json_path_fn,
                       json_data_settings_dic, ep_all_list, list_all_key)
-
-    return p
 
 
 def test_export_cc_json(p):
@@ -274,6 +292,7 @@ def test_export_ns3_json(p):
 
 
 if __name__ == '__main__':
-    p = test_export_gld_json()
+    p = JsonExporter()
+    test_export_gld_json(p)
     test_export_cc_json(p)
     test_export_ns3_json(p)
