@@ -1,7 +1,7 @@
 # ***************************************
 # Author: Jing Xie
 # Created Date: 2020-3
-# Updated Date: 2020-3-20
+# Updated Date: 2020-3-23
 # Email: jing.xie@pnnl.gov
 # ***************************************
 
@@ -25,13 +25,24 @@ class JsonExporter:
 
         # == for CC json file
         self.param_cc_ep_pref = cc_ep_pref
-        self.param_cc_ep_type = 'string'
+        self.param_cc_ep_type = "string"
         self.param_cc_ep_global = False
 
         # == for ns3 json file
+        #~~ filters
         self.param_ns3_filters_pref = ns3_filters_pref
         self.param_ns3_filter_oper = "reroute"
         self.param_ns3_filter_prop_name = "newdestination"
+
+        #~~ endpoints
+        self.param_ns3_ep_info = "0"
+        self.param_ns3_ep_global = False
+
+        # == for gld json file
+        self.gld_ep_all_list = []
+        self.gld_all_key_list = []
+        self.param_gld_ep_type = "string"
+        self.param_gld_ep_global = False
 
     def dump_json(self, json_path_fn, json_data_dic):
         """Dump the data dictionary into a json file
@@ -40,20 +51,18 @@ class JsonExporter:
             json.dump(json_data_dic, hf_json,
                       sort_keys=self.json_dump_sort_key, indent=self.json_dump_indent_val)
 
-    @staticmethod
-    def get_gld_endpoints(gld_comp_list, gld_ep_obj_dic, ep_property,
-                          ep_type='string', ep_global=False):
+    def get_gld_endpoints(self, gld_comp_list, gld_ep_obj_dic, ep_property):
         """
         Static method for handling different types of endpoints
         """
-        glp_ep_list = []
+        gld_ep_list = []
         for cur_comp_str in gld_comp_list:
             cur_ep_dic = {}
 
             # --other properties
-            cur_ep_dic['global'] = ep_global
+            cur_ep_dic['global'] = self.param_gld_ep_global
             cur_ep_dic['name'] = cur_comp_str
-            cur_ep_dic['type'] = ep_type
+            cur_ep_dic['type'] = self.param_gld_ep_type
 
             # --'info' property
             if cur_comp_str in gld_ep_obj_dic:
@@ -67,8 +76,14 @@ class JsonExporter:
             cur_ep_dic['info'] = json.dumps(cur_ep_info_dic)
 
             # --assemble
-            glp_ep_list.append(cur_ep_dic)
-        return glp_ep_list
+            gld_ep_list.append(cur_ep_dic)
+
+        self.gld_ep_all_list += gld_ep_list
+        self.gld_all_key_list += gld_comp_list
+
+    def update_param_gld_endpoints(self, gld_ep_type='string', gld_ep_global=False):
+        self.param_gld_ep_type = gld_ep_type
+        self.param_gld_ep_global = gld_ep_global
 
     def update_param_cc_endpoints(self, cc_ep_pref, cc_ep_type='string', cc_ep_global=False):
         self.param_cc_ep_pref = cc_ep_pref
@@ -93,7 +108,11 @@ class JsonExporter:
             self.cc_ep_list.append(cur_cc_ep_dict)
             self.cc_list_all_key.append(cur_cc_ep_dict['name'])
 
-    def get_ns3_endpoints(self, ns3_ep_info="0", ns3_ep_global=False):
+    def update_param_ns3_endpoints(self, ns3_ep_info, ns3_ep_global):
+        self.param_ns3_ep_info = ns3_ep_info
+        self.param_ns3_ep_global = ns3_ep_global
+
+    def get_ns3_endpoints(self):
         """
         """
         self.ns3_ep_list = []
@@ -102,8 +121,8 @@ class JsonExporter:
         for cur_gld_ep_name in self.gld_list_all_key:
             cur_gld_ep_dict = {}
             cur_gld_ep_dict['name'] = f"{self.gld_json_config_name}/{cur_gld_ep_name}"
-            cur_gld_ep_dict['info'] = ns3_ep_info
-            cur_gld_ep_dict['global'] = ns3_ep_global
+            cur_gld_ep_dict['info'] = self.param_ns3_ep_info
+            cur_gld_ep_dict['global'] = self.param_ns3_ep_global
 
             self.ns3_ep_list.append(cur_gld_ep_dict)
 
@@ -111,8 +130,8 @@ class JsonExporter:
         for cur_cc_ep_name in self.cc_list_all_key:
             cur_cc_ep_dict = {}
             cur_cc_ep_dict['name'] = f"{self.cc_json_config_name}/{cur_cc_ep_name}"
-            cur_cc_ep_dict['info'] = ns3_ep_info
-            cur_cc_ep_dict['global'] = ns3_ep_global
+            cur_cc_ep_dict['info'] = self.param_ns3_ep_info
+            cur_cc_ep_dict['global'] = self.param_ns3_ep_global
 
             self.ns3_ep_list.append(cur_cc_ep_dict)
 
@@ -148,20 +167,20 @@ class JsonExporter:
         self.get_ns3_sub_filters(self.cc_list_all_key,
                                  self.cc_json_config_name)
 
-    def export_gld_json(self, output_json_path_fn, json_data_settings_dic, ep_all_list, list_all_key):
+    def export_gld_json(self, output_json_path_fn, json_data_settings_dic):
         # --record
         self.gld_json_config_name = json_data_settings_dic['name']
 
         # --prepare
         self.gld_data = {}
         self.gld_data.update(json_data_settings_dic)
-        self.gld_data["endpoints"] = ep_all_list
+        self.gld_data["endpoints"] = self.gld_ep_all_list
 
         # --dump
         self.dump_json(output_json_path_fn, self.gld_data)
 
         # --record
-        self.gld_list_all_key = list_all_key
+        self.gld_list_all_key = self.gld_all_key_list
 
     def export_cc_json(self, output_json_path_fn, json_data_settings_dic):
         # --record
@@ -224,8 +243,8 @@ def test_export_gld_json(p):
     list_cbs_key = ['CB' + str(x) for x in range(1, 5)]
     list_cbs_val = ['CB_' + str(x) for x in range(1, 5)]
     ep_cbs_obj_dic = dict(zip(list_cbs_key, list_cbs_val))
-    ep_cbs_list = JsonExporter.get_gld_endpoints(list_cbs_key, ep_cbs_obj_dic,
-                                                 ep_property)
+    p.get_gld_endpoints(list_cbs_key, ep_cbs_obj_dic,
+                        ep_property)
 
     list_rcls_key = ['RCL' + str(x) for x in range(1, 13)]
     ep_rcls_obj_dic = {'RCL1': 'RCL1_53547349_1207',
@@ -236,25 +255,19 @@ def test_export_gld_json(p):
                        'RCL9': 'RCL9_39057658_1209',
                        'RCL11': 'RCL11_616009826_1210',
                        'RCL12': 'RCL12_164887203_1212'}
-    ep_rcls_list = JsonExporter.get_gld_endpoints(list_rcls_key, ep_rcls_obj_dic,
-                                                  ep_property)
+    p.get_gld_endpoints(list_rcls_key, ep_rcls_obj_dic,
+                        ep_property)
 
     # ~~inverters
     ep_inv_property = 'Q_Out'
 
-    list_invs_key = ['PV_S2_n256860617_1207']
+    list_invs_key = ['INV_Inv_S2_n256860617_1207']  # @TODO
     list_invs_val = ['Inv_S2_n256860617_1207']
     ep_invs_obj_dic = dict(zip(list_invs_key, list_invs_val))
-    ep_invs_list = JsonExporter.get_gld_endpoints(list_invs_key, ep_invs_obj_dic,
-                                                  ep_inv_property)
-
-    # --prepare
-    ep_all_list = ep_cbs_list + ep_rcls_list + ep_invs_list
-    list_all_key = list_cbs_key + list_rcls_key + list_invs_key
+    p.get_gld_endpoints(list_invs_key, ep_invs_obj_dic, ep_inv_property)
 
     # ==Export
-    p.export_gld_json(output_json_path_fn,
-                      json_data_settings_dic, ep_all_list, list_all_key)
+    p.export_gld_json(output_json_path_fn, json_data_settings_dic)
 
 
 def test_export_cc_json(p):
