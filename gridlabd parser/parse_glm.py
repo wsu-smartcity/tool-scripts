@@ -37,6 +37,7 @@ class GlmParser:
         self.re_glm_syn_obj_load = r'object\s*load.*?{.*?}\s*;*'
         self.re_glm_syn_obj_node = r'object\s*node.*?{.*?}\s*;*'
         #self.re_glm_syn_obj_x = r'object\s*{}.*?{.*?}\s*;*'
+        self.re_glm_syn_obj_inv = r'object\s*inverter.*?{.*?}\s*;*'
 
         self.re_glm_attr_tpl_str = '.*{}\s*(.*?);'
 
@@ -73,6 +74,20 @@ class GlmParser:
         '''Extract the content of a giving type of object'''
         obj_list = re.findall(obj_str, src_str, flags=re.DOTALL)
         return obj_list
+
+    def parse_inv(self, lines_str):
+        """Parse and Package All Inverter Objects
+        """
+        self.all_invs_list = self.extract_obj(
+            self.re_glm_syn_obj_inv, lines_str)
+
+        self.all_invs_names_list = []
+        for cur_obj_str in self.all_invs_list:
+            # ==Names
+            cur_inv_obj_name_list = self.extract_attr('name', cur_obj_str)
+            assert len(
+                cur_inv_obj_name_list) == 1, 'Redundancy or missing on the name attribute!'
+            self.all_invs_names_list.append(cur_inv_obj_name_list[0])
 
     def parse_node(self, lines_str):
         """Parse and Package All Node Objects
@@ -210,6 +225,10 @@ class GlmParser:
     def read_content_triload(self, filename):
         str_file_woc = self.import_file(filename)
         self.parse_triload(str_file_woc)
+
+    def read_inv_names(self, filename):
+        str_file_woc = self.import_file(filename)
+        self.parse_inv(str_file_woc)
 
     def add_ufls_gfas(self, output_glm_path_fn,
                       ufls_pct, ufls_th, ufls_dly, gfa_rc_time, gfa_extra_str='',
@@ -629,14 +648,7 @@ def test_pick_node_from_segments():
             print(f'{cur_zone_key},{cur_node_name_str},{cur_node_phase_str}')
 
 
-if __name__ == '__main__':
-    # test_add_ufls_gfas()
-    # test_separate_load_objs()
-    # test_adjust_load_amount()
-    # test_read_content_load()
-    # test_read_content_node()
-    # test_read_zone_info()
-
+def calc_segment_loading():
     _, seg_loading_p_dict, seg_loading_q_dict = test_mapping_zone_info()
     total_load_p = 0
     total_load_q = 0
@@ -647,9 +659,33 @@ if __name__ == '__main__':
         total_load_q += val_q
 
         print(f"Segment {key}: {val/1e3} (kW), {val_q/1e3} (kVAR)")
+
     print(
-        f"Total load of all segments: {total_load_p/1e3} (kW), {total_load_q/1e3} (kVAR)")
+        (f"Total load of all segments: {total_load_p/1e3}(kW), {total_load_q/1e3}(kVAR)"))
+
+
+def test_read_inv_names():
+    # ==Parameters
+    inv_glm_path_fn = r'D:\Duke_UC3_S1_Tap12_[with MG][Clean][LessLoad]\SolarPV.glm'
+
+    # ==Test & Demo
+    p = GlmParser()
+    p.read_inv_names(inv_glm_path_fn)
+
+    print(p.all_invs_names_list)
+
+
+if __name__ == '__main__':
+    # test_add_ufls_gfas()
+    # test_separate_load_objs()
+    # test_adjust_load_amount()
+    # test_read_content_load()
+    # test_read_content_node()
+    # test_read_zone_info()
+
+    # calc_segment_loading()
 
     # test_pick_node_from_segments()
-
     # test_load_zone_info()
+
+    test_read_inv_names()
