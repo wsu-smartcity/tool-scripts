@@ -10,8 +10,10 @@ import subprocess
 import shutil
 import pathlib
 
+import sys
+sys.path.append('../gridlabd parser')
+
 from parse_glm import GlmParser
-import re
 
 
 class GldSmn:
@@ -140,21 +142,12 @@ class GldSmn:
                 raise ValueError("The source glm is problematic")
 
             for cur_q in self.inv_q_list:
-                # cur_inv_glm_lines_mod_str = re.sub(
-                #     r".*?Q_Out.*?;.*?", "\tQ_Out %f;" % cur_q, cur_inv_glm_lines_str
-                # )
+                # --update Q_Out
                 cur_inv_glm_lines_mod_str = self.gp.modify_attr(
                     "Q_Out", str(cur_q), cur_inv_glm_lines_str
                 )
 
-                # copy_igs_str = igs_str
-                # cur_q_inv_glm_str = re.sub(
-                #     cur_inv_re_tpl,
-                #     cur_inv_glm_lines_mod_str,
-                #     copy_igs_str,
-                #     flags=re.DOTALL,
-                # )
-
+                # --replace the obj portion in the source string
                 cur_q_inv_glm_str = self.gp.replace_obj(
                     cur_inv_re_tpl, igs_str, cur_inv_glm_lines_mod_str
                 )
@@ -167,6 +160,7 @@ class GldSmn:
                     self.stor_csv_path, cur_results_flr_name
                 )
                 self.save_results(cur_results_flr_pfn)
+
 
 def test_GldSmn():
     """

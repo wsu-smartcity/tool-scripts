@@ -36,7 +36,6 @@ class GlmParser:
 
         self.re_glm_syn_obj_load = r"object\s*load.*?{.*?}\s*;*"
         self.re_glm_syn_obj_node = r"object\s*node.*?{.*?}\s*;*"
-        # self.re_glm_syn_obj_x = r'object\s*{}.*?{.*?}\s*;*'
         self.re_glm_syn_obj_inv = r"object\s*inverter.*?{.*?}\s*;*"
 
         self.re_glm_attr_tpl_str = ".*{}\s*(.*?);"
