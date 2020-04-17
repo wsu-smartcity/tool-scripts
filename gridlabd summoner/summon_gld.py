@@ -11,7 +11,8 @@ import shutil
 import pathlib
 
 import sys
-sys.path.append('../gridlabd parser')
+
+sys.path.append("../gridlabd parser")
 
 from parse_glm import GlmParser
 
@@ -131,7 +132,7 @@ class GldSmn:
 
         self.prep_rslts_flr(self.stor_csv_path)
 
-        for cur_inv_nm in self.inv_nm_list[0:1]:
+        for cur_inv_nm in self.inv_nm_list:
             cur_inv_glm_lines_list, cur_inv_re_tpl = self.gp.find_obj_via_attr(
                 "inverter", "name", cur_inv_nm, igs_str
             )
@@ -194,8 +195,13 @@ def test_GldSmn():
     inv_glm_dst_fn = r"SolarPV.glm"
 
     inv_nm_list = []
-    inv_q_base = 1e2
-    inv_q_list = [x / 10 * inv_q_base for x in range(2)]
+
+    inv_q_upper_lim = 1.0
+    inv_q_lower_lim = -1.0
+    inv_q_stepsize = 8e-1
+
+    inv_q_list_len = 1 + int((inv_q_upper_lim - inv_q_lower_lim) / inv_q_stepsize)
+    inv_q_list = [inv_q_lower_lim + x * inv_q_stepsize for x in range(inv_q_list_len)]
 
     # --prep
     # inv_glm_src_pfn = os.path.join(inv_glm_path, inv_glm_src_fn)
