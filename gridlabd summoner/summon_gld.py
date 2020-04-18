@@ -124,15 +124,19 @@ class GldSmn:
         self.gp = GlmParser()
 
     def run_inv_qlist(self):
-        # --read contents of the inv glm file
-        igs_str = self.gp.import_file(self.inv_glm_src_pfn)
-
+        # --search the list of inverters if not given
         if not self.inv_nm_list:
             self.inv_nm_list = self.gp.read_inv_names(self.inv_glm_src_pfn)
 
+        # --prepare the results folder
         self.prep_rslts_flr(self.stor_csv_path)
 
+        # --run gld for each inverter
         for cur_inv_nm in self.inv_nm_list:
+            # --read contents of the inv glm file
+            igs_str = self.gp.import_file(self.inv_glm_src_pfn)
+
+            # --search the current inverter
             cur_inv_glm_lines_list, cur_inv_re_tpl = self.gp.find_obj_via_attr(
                 "inverter", "name", cur_inv_nm, igs_str
             )
@@ -142,10 +146,18 @@ class GldSmn:
             else:
                 raise ValueError("The source glm is problematic")
 
-            for cur_q in self.inv_q_list:
+            # --run gld for each q value
+            for cur_q_pu in self.inv_q_list:
+                # --get inv rated power
+                cur_inv_rp_list = self.gp.extract_attr("rated_power", cur_inv_glm_lines_str)
+
+                assert(len(cur_inv_rp_list)==1)
+                cur_inv_rp = float(cur_inv_rp_list[0])
+
                 # --update Q_Out
+                cur_q_var = cur_q_pu * cur_inv_rp
                 cur_inv_glm_lines_mod_str = self.gp.modify_attr(
-                    "Q_Out", str(cur_q), cur_inv_glm_lines_str
+                    "Q_Out", str(cur_q_var), cur_inv_glm_lines_str
                 )
 
                 # --replace the obj portion in the source string
@@ -156,7 +168,7 @@ class GldSmn:
                 # --export, run, & save
                 self.gp.export_glm(self.inv_glm_dst_pfn, cur_q_inv_glm_str)
                 self.run_gld()
-                cur_results_flr_name = f"{cur_inv_nm}_{cur_q}"
+                cur_results_flr_name = f"{cur_inv_nm}_{cur_q_pu}"
                 cur_results_flr_pfn = os.path.join(
                     self.stor_csv_path, cur_results_flr_name
                 )
