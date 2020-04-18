@@ -149,9 +149,11 @@ class GldSmn:
             # --run gld for each q value
             for cur_q_pu in self.inv_q_list:
                 # --get inv rated power
-                cur_inv_rp_list = self.gp.extract_attr("rated_power", cur_inv_glm_lines_str)
+                cur_inv_rp_list = self.gp.extract_attr(
+                    "rated_power", cur_inv_glm_lines_str
+                )
 
-                assert(len(cur_inv_rp_list)==1)
+                assert len(cur_inv_rp_list) == 1
                 cur_inv_rp = float(cur_inv_rp_list[0])
 
                 # --update Q_Out
@@ -183,7 +185,7 @@ def test_GldSmn():
     gld_path = r"D:\Duke_UC3_S1_[For UTK]"
     gld_exe_fn = r"gridlabd.exe"
 
-    glm_path = r"D:\test glms"  # r"D:\Duke_UC3_S1_[For UTK]"
+    glm_path = r"D:\test glms"  # Note that the path and folder cannot have the bracket, this is not supported by GLD... E.g., this does not work: glm_path = r"D:\Duke_UC3_S1_[For UTK]"
     glm_fn = r"Duke_Main.glm"
 
     gld_csv_path = gld_path
