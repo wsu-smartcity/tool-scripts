@@ -123,6 +123,11 @@ class GldSmn:
         # ==Init GlmParser
         self.gp = GlmParser()
 
+    def run_inv_qplayer(self):
+        """Modify the Q_Out of the selected inverter via a player file
+        """
+
+
     def run_inv_qlist(self):
         # --search the list of inverters if not given
         if not self.inv_nm_list:
@@ -220,9 +225,6 @@ def test_GldSmn():
     inv_q_list_len = 1 + int((inv_q_upper_lim - inv_q_lower_lim) / inv_q_stepsize)
     inv_q_list = [inv_q_lower_lim + x * inv_q_stepsize for x in range(inv_q_list_len)]
 
-    # --prep
-    # inv_glm_src_pfn = os.path.join(inv_glm_path, inv_glm_src_fn)
-
     # ==Init the Instance of GlmParser
     p.init_GlmParser(
         inv_glm_path, inv_glm_src_fn, inv_glm_dst_fn, inv_q_list, inv_nm_list
@@ -231,10 +233,13 @@ def test_GldSmn():
     """
     Demos
     """
-    # ==Demo 01
+    # ==Demo 01 (modify Q_Out directly in glm)
     p.run_inv_qlist()
 
-    # ==Demo 02
+    # ==Demo 02 (modify Q_Out via player)
+    p.run_inv_qplayer()
+
+    # ==Demo 03
     # --run GLD
     # p.run_gld()
 
