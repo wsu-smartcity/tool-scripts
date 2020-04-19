@@ -1,7 +1,7 @@
 # ***************************************
 # Author: Jing Xie
 # Created Date: 2020-4-13
-# Updated Date: 2020-4-17
+# Updated Date: 2020-4-19
 # Email: jing.xie@pnnl.gov
 # ***************************************
 
@@ -182,10 +182,13 @@ def test_GldSmn():
     Params & Init
     """
     # ==Parameters (for GldSmn)
-    gld_path = r"D:\Duke_UC3_S1_[For UTK]"
+    gld_path = r"D:\test glms" #r"D:\Duke_UC3_S1_[For UTK]"
     gld_exe_fn = r"gridlabd.exe"
 
-    glm_path = r"D:\test glms"  # Note that the path and folder cannot have the bracket, this is not supported by GLD... E.g., this does not work: glm_path = r"D:\Duke_UC3_S1_[For UTK]"
+    # Note that:
+    # 1) the path and folder of the main glm file cannot have the bracket, this is not supported by GLD... E.g., this does not work: glm_path = r"D:\Duke_UC3_S1_[For UTK]"
+    # 2) if the main glm file includes other glm files, those must be put under the gld_path, unless the full path is specified in the main glm file
+    glm_path = gld_path #r"D:\test glms"
     glm_fn = r"Duke_Main.glm"
 
     gld_csv_path = gld_path
