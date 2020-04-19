@@ -83,7 +83,8 @@ class GlmParser:
         re_tpl_obj_attr = (
             r"object\s*"
             + obj_str
-            + r".*?{.*?"
+            # + r"\s*{.*?"
+            + r"\s*{[^}]*?"
             + attr_tag_str
             + r"\s*"
             + attr_val_str
