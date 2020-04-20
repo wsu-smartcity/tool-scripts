@@ -169,8 +169,26 @@ class player {
 
         glm_obj_player_str = glm_obj_player_class_str + glm_obj_player_obj_str
 
+        # --plug the player.value into the Q_Out of the current inverter
+        # ~~get inv rated power
+        cur_inv_rp_list = self.gp.extract_attr("rated_power", cur_inv_glm_lines_str)
+
+        assert len(cur_inv_rp_list) == 1
+        cur_inv_rp = float(cur_inv_rp_list[0])
+
+        # ~~update Q_Out
+        cur_q_var_str = f"{player_nm_str}.value * {cur_inv_rp}"
+        cur_inv_glm_lines_mod_str = self.gp.modify_attr(
+            "Q_Out", cur_q_var_str, cur_inv_glm_lines_str
+        )
+
+        # ~~replace the obj portion in the source string
+        cur_q_inv_glm_str = self.gp.replace_obj(
+            cur_inv_re_tpl, igs_str, cur_inv_glm_lines_mod_str
+        )
+
         # --insert the multi-recorder & player into the target glm file
-        cur_inv_glm_str = glm_obj_mr_str + glm_obj_player_str + igs_str
+        cur_inv_glm_str = glm_obj_mr_str + glm_obj_player_str + cur_q_inv_glm_str
 
         # --export glm, run GLD, and save csv files
         self.gp.export_glm(self.inv_glm_dst_pfn, cur_inv_glm_str)
