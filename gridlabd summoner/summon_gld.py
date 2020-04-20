@@ -107,7 +107,12 @@ class GldSmn:
         # shutil.copyfile(inv_glm_pfn, inv_glm_copy_pfn)
 
     def init_GlmParser(
-        self, inv_glm_path, inv_glm_src_fn, inv_glm_dst_fn, inv_q_list, inv_nm_list=[]
+        self,
+        inv_glm_path,
+        inv_glm_src_fn,
+        inv_glm_dst_fn,
+        inv_q_list=[],
+        inv_nm_list=[],
     ):
         # ==Assign
         self.inv_glm_path = inv_glm_path
@@ -123,12 +128,88 @@ class GldSmn:
         # ==Init GlmParser
         self.gp = GlmParser()
 
-    def run_inv_qplayer(self):
+    def run_inv_qplayer(
+        self, cur_inv_nm, cur_inv_glm_lines_str, cur_inv_re_tpl, igs_str
+    ):
         """Modify the Q_Out of the selected inverter via a player file
         """
+        # --params (multi-recorder)
+        mr_csv_fn = f"{cur_inv_nm}.csv"
+        mr_prop_str = f"{cur_inv_nm}:VA_Out.imag, meter_n256824166_1212:measured_voltage_A, q_player:value"
+        mr_interval = 1
 
+        # --params (player)
+        player_nm_str = "q_player"
+        player_file_str = "inv_q.player"
 
-    def run_inv_qlist(self):
+        # --create a multi-recorder
+        glm_obj_mr_str = (
+            f"//==Multi-Recorder\n"
+            f"object multi_recorder {{\n"
+                f"\tinterval {mr_interval};\n"
+                f"\tproperty {mr_prop_str};\n"
+                f"\tfile {mr_csv_fn};\n"
+            f"}}\n"
+        )
+
+        # --create a player
+        glm_obj_player_class_str = """
+//==Player (extended mode)
+class player {
+    double value;
+}\n
+"""
+
+        glm_obj_player_obj_str = (
+            f"object player {{\n"
+                f"\tname {player_nm_str};\n"
+                f"\tfile {player_file_str};\n"
+            f"}}\n"
+        )
+
+        glm_obj_player_str = glm_obj_player_class_str + glm_obj_player_obj_str
+
+        # --insert the multi-recorder & player into the target glm file
+        cur_inv_glm_str = glm_obj_mr_str + glm_obj_player_str + igs_str
+
+        # --export glm, run GLD, and save csv files
+        self.gp.export_glm(self.inv_glm_dst_pfn, cur_inv_glm_str)
+        self.run_gld()
+        cur_results_flr_name = f"{cur_inv_nm}"
+        cur_results_flr_pfn = os.path.join(self.stor_csv_path, cur_results_flr_name)
+        self.save_results(cur_results_flr_pfn)
+    
+    def run_inv_qlist(self, cur_inv_nm, cur_inv_glm_lines_str, cur_inv_re_tpl, igs_str):
+        # --data sanity check
+        assert self.inv_q_list
+
+        # --run gld for each q value
+        for cur_q_pu in self.inv_q_list:
+            # --get inv rated power
+            cur_inv_rp_list = self.gp.extract_attr("rated_power", cur_inv_glm_lines_str)
+
+            assert len(cur_inv_rp_list) == 1
+            cur_inv_rp = float(cur_inv_rp_list[0])
+
+            # --update Q_Out
+            cur_q_var = cur_q_pu * cur_inv_rp
+            cur_inv_glm_lines_mod_str = self.gp.modify_attr(
+                "Q_Out", str(cur_q_var), cur_inv_glm_lines_str
+            )
+
+            # --replace the obj portion in the source string
+            cur_q_inv_glm_str = self.gp.replace_obj(
+                cur_inv_re_tpl, igs_str, cur_inv_glm_lines_mod_str
+            )
+
+            # --export glm, run GLD, and save csv files
+            self.gp.export_glm(self.inv_glm_dst_pfn, cur_q_inv_glm_str)
+            self.run_gld()
+            cur_results_flr_name = f"{cur_inv_nm}_{cur_q_pu}"
+            cur_results_flr_pfn = os.path.join(self.stor_csv_path, cur_results_flr_name)
+            self.save_results(cur_results_flr_pfn)
+
+    def run_inv(self, run_player_mode=True):
         # --search the list of inverters if not given
         if not self.inv_nm_list:
             self.inv_nm_list = self.gp.read_inv_names(self.inv_glm_src_pfn)
@@ -151,35 +232,15 @@ class GldSmn:
             else:
                 raise ValueError("The source glm is problematic")
 
-            # --run gld for each q value
-            for cur_q_pu in self.inv_q_list:
-                # --get inv rated power
-                cur_inv_rp_list = self.gp.extract_attr(
-                    "rated_power", cur_inv_glm_lines_str
+            # --run gld for each q value in a given list
+            if run_player_mode:
+                self.run_inv_qplayer(
+                    cur_inv_nm, cur_inv_glm_lines_str, cur_inv_re_tpl, igs_str
                 )
-
-                assert len(cur_inv_rp_list) == 1
-                cur_inv_rp = float(cur_inv_rp_list[0])
-
-                # --update Q_Out
-                cur_q_var = cur_q_pu * cur_inv_rp
-                cur_inv_glm_lines_mod_str = self.gp.modify_attr(
-                    "Q_Out", str(cur_q_var), cur_inv_glm_lines_str
+            else:
+                self.run_inv_qlist(
+                    cur_inv_nm, cur_inv_glm_lines_str, cur_inv_re_tpl, igs_str
                 )
-
-                # --replace the obj portion in the source string
-                cur_q_inv_glm_str = self.gp.replace_obj(
-                    cur_inv_re_tpl, igs_str, cur_inv_glm_lines_mod_str
-                )
-
-                # --export, run, & save
-                self.gp.export_glm(self.inv_glm_dst_pfn, cur_q_inv_glm_str)
-                self.run_gld()
-                cur_results_flr_name = f"{cur_inv_nm}_{cur_q_pu}"
-                cur_results_flr_pfn = os.path.join(
-                    self.stor_csv_path, cur_results_flr_name
-                )
-                self.save_results(cur_results_flr_pfn)
 
 
 def test_GldSmn():
@@ -187,13 +248,13 @@ def test_GldSmn():
     Params & Init
     """
     # ==Parameters (for GldSmn)
-    gld_path = r"D:\test glms" #r"D:\Duke_UC3_S1_[For UTK]"
+    gld_path = r"D:\test glms"
     gld_exe_fn = r"gridlabd.exe"
 
     # Note that:
     # 1) the path and folder of the main glm file cannot have the bracket, this is not supported by GLD... E.g., this does not work: glm_path = r"D:\Duke_UC3_S1_[For UTK]"
     # 2) if the main glm file includes other glm files, those must be put under the gld_path, unless the full path is specified in the main glm file
-    glm_path = gld_path #r"D:\test glms"
+    glm_path = gld_path  # r"D:\test glms"
     glm_fn = r"Duke_Main.glm"
 
     gld_csv_path = gld_path
@@ -218,6 +279,7 @@ def test_GldSmn():
 
     inv_nm_list = []
 
+    # --create q list (if not using the player mode)
     inv_q_upper_lim = 1.0
     inv_q_lower_lim = -1.0
     inv_q_stepsize = 8e-1
@@ -234,10 +296,10 @@ def test_GldSmn():
     Demos
     """
     # ==Demo 01 (modify Q_Out directly in glm)
-    p.run_inv_qlist()
+    # p.run_inv(run_player_mode=False)
 
     # ==Demo 02 (modify Q_Out via player)
-    p.run_inv_qplayer()
+    p.run_inv(run_player_mode=True)
 
     # ==Demo 03
     # --run GLD
