@@ -1,7 +1,7 @@
 # ***************************************
 # Author: Jing Xie
 # Created Date: 2020-4-13
-# Updated Date: 2020-4-19
+# Updated Date: 2020-4-20
 # Email: jing.xie@pnnl.gov
 # ***************************************
 
@@ -10,6 +10,7 @@ import subprocess
 import shutil
 import pathlib
 
+# @TODO: It is not good to modify the path. Two options (the 2nd one is better): 1) __init__.py; 2) package, then install via pip
 import sys
 
 sys.path.append("../gridlabd parser")
@@ -87,8 +88,20 @@ class GldSmn:
 
                     shutil.move(src_pfn, cur_dst_pfn)
 
+    def move_csv_files(self, dst_flr_path=""):
+        """Save the result file(s) into a single folder
+        """
+        # @TODO: This can be merged into func 'save_results' by tracking the previous_dst_flr_path and compare with the current one
+        if not dst_flr_path:
+            dst_flr_path = self.stor_csv_path
+
+        if not os.path.exists(dst_flr_path):
+            os.makedirs(dst_flr_path)
+
+        self.move_rslts_files(dst_flr_path)
+
     def save_results(self, dst_flr_path=""):
-        """Dump the data dictionary into a json file
+        """Save the result files into individual folders
         """
         if not dst_flr_path:
             dst_flr_path = self.stor_csv_path
@@ -111,8 +124,8 @@ class GldSmn:
         inv_glm_path,
         inv_glm_src_fn,
         inv_glm_dst_fn,
-        inv_q_list=[],
         inv_nm_list=[],
+        inv_q_list=[],
     ):
         # ==Assign
         self.inv_glm_path = inv_glm_path
@@ -128,27 +141,35 @@ class GldSmn:
         # ==Init GlmParser
         self.gp = GlmParser()
 
+    def prep_run_inv_qlist(self, inv_q_list):
+        self.inv_q_list = inv_q_list
+
+    def prep_run_inv_qplayer(self, player_file_str, player_nm_str="q_player"):
+        self.player_file_str = player_file_str
+        self.player_nm_str = player_nm_str
+
+    def prep_multi_recorder(self, mr_prop_str, mr_interval=1, mr_file_suff=".csv"):
+        self.mr_prop_str = mr_prop_str
+        self.mr_interval = mr_interval
+        self.mr_file_suff = mr_file_suff
+
     def run_inv_qplayer(
         self, cur_inv_nm, cur_inv_glm_lines_str, cur_inv_re_tpl, igs_str
     ):
         """Modify the Q_Out of the selected inverter via a player file
         """
         # --params (multi-recorder)
-        mr_csv_fn = f"{cur_inv_nm}.csv"
-        mr_prop_str = f"{cur_inv_nm}:VA_Out.imag, meter_n256824166_1212:measured_voltage_A, q_player:value"
-        mr_interval = 1
-
-        # --params (player)
-        player_nm_str = "q_player"
-        player_file_str = "inv_q.player"
+        mr_file_fn = f"{cur_inv_nm}{self.mr_file_suff}"
+        mr_prop_str = f"{cur_inv_nm}:{self.mr_prop_str}"
+        mr_interval = self.mr_interval
 
         # --create a multi-recorder
         glm_obj_mr_str = (
             f"//==Multi-Recorder\n"
             f"object multi_recorder {{\n"
-                f"\tinterval {mr_interval};\n"
-                f"\tproperty {mr_prop_str};\n"
-                f"\tfile {mr_csv_fn};\n"
+            f"\tinterval {mr_interval};\n"
+            f"\tproperty {mr_prop_str};\n"
+            f"\tfile {mr_file_fn};\n"
             f"}}\n"
         )
 
@@ -162,8 +183,8 @@ class player {
 
         glm_obj_player_obj_str = (
             f"object player {{\n"
-                f"\tname {player_nm_str};\n"
-                f"\tfile {player_file_str};\n"
+            f"\tname {self.player_nm_str};\n"
+            f"\tfile {self.player_file_str};\n"
             f"}}\n"
         )
 
@@ -177,7 +198,7 @@ class player {
         cur_inv_rp = float(cur_inv_rp_list[0])
 
         # ~~update Q_Out
-        cur_q_var_str = f"{player_nm_str}.value * {cur_inv_rp}"
+        cur_q_var_str = f"{self.player_nm_str}.value * {cur_inv_rp}"
         cur_inv_glm_lines_mod_str = self.gp.modify_attr(
             "Q_Out", cur_q_var_str, cur_inv_glm_lines_str
         )
@@ -193,10 +214,15 @@ class player {
         # --export glm, run GLD, and save csv files
         self.gp.export_glm(self.inv_glm_dst_pfn, cur_inv_glm_str)
         self.run_gld()
-        cur_results_flr_name = f"{cur_inv_nm}"
-        cur_results_flr_pfn = os.path.join(self.stor_csv_path, cur_results_flr_name)
-        self.save_results(cur_results_flr_pfn)
-    
+
+        # ~~put under individual folders
+        # cur_results_flr_name = f"{cur_inv_nm}"
+        # cur_results_flr_pfn = os.path.join(self.stor_csv_path, cur_results_flr_name)
+        # ~~put under one folder
+        cur_results_flr_pfn = self.stor_csv_path
+
+        self.move_csv_files(cur_results_flr_pfn)
+
     def run_inv_qlist(self, cur_inv_nm, cur_inv_glm_lines_str, cur_inv_re_tpl, igs_str):
         # --data sanity check
         assert self.inv_q_list
@@ -297,26 +323,35 @@ def test_GldSmn():
 
     inv_nm_list = []
 
-    # --create q list (if not using the player mode)
-    inv_q_upper_lim = 1.0
-    inv_q_lower_lim = -1.0
-    inv_q_stepsize = 8e-1
-
-    inv_q_list_len = 1 + int((inv_q_upper_lim - inv_q_lower_lim) / inv_q_stepsize)
-    inv_q_list = [inv_q_lower_lim + x * inv_q_stepsize for x in range(inv_q_list_len)]
-
     # ==Init the Instance of GlmParser
-    p.init_GlmParser(
-        inv_glm_path, inv_glm_src_fn, inv_glm_dst_fn, inv_q_list, inv_nm_list
-    )
+    p.init_GlmParser(inv_glm_path, inv_glm_src_fn, inv_glm_dst_fn, inv_nm_list)
 
     """
     Demos
     """
     # ==Demo 01 (modify Q_Out directly in glm)
+    # --1) create q list (if not using the player mode)
+    # inv_q_upper_lim = 1.0
+    # inv_q_lower_lim = -1.0
+    # inv_q_stepsize = 8e-1
+
+    # inv_q_list_len = 1 + int((inv_q_upper_lim - inv_q_lower_lim) / inv_q_stepsize)
+    # inv_q_list = [inv_q_lower_lim + x * inv_q_stepsize for x in range(inv_q_list_len)]
+
+    # --2) prep & run
+    # p.prep_run_inv_qlist(inv_q_list)
     # p.run_inv(run_player_mode=False)
 
     # ==Demo 02 (modify Q_Out via player)
+    # --1) params
+    player_file_str = "inv_q.player"
+    mr_prop_str = (
+        "VA_Out.imag, meter_n256824166_1212:measured_voltage_A, q_player:value"
+    )
+
+    # --2) prep & run
+    p.prep_multi_recorder(mr_prop_str)
+    p.prep_run_inv_qplayer(player_file_str)
     p.run_inv(run_player_mode=True)
 
     # ==Demo 03
