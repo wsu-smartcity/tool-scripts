@@ -409,7 +409,8 @@ class GlmParser:
             cur_new_obj_str = self.update_pq(cur_obj_str, p_ratio, tgt_pf)
             self.all_adj_loads_list.append(cur_new_obj_str)
 
-            out_adj_load_str += self.obj_load_tpl_str.format(cur_new_obj_str, "")
+            # out_adj_load_str += self.obj_load_tpl_str.format(cur_new_obj_str, "")
+            out_adj_load_str += cur_new_obj_str
 
         self.export_glm(adj_load_glm_path_fn, out_adj_load_str)
 
@@ -512,13 +513,13 @@ def test_separate_load_objs():
 
 def test_adjust_load_amount():
     # ==Parameters
-    load_glm_path_fn = r"D:\UC3_S1_Tap12_[with MG][Clean][LessLoad]\duke_loads.glm"
+    load_glm_path_fn = r"D:\Duke_UC3_S1_Tap12_[with MG][Clean][LessLoad]\duke_loads.glm"
     adj_load_glm_path_fn = (
-        r"D:\UC3_S1_Tap12_[with MG][Clean][LessLoad]\duke_loads_adj.glm"
+        r"D:\Duke_UC3_S1_Tap12_[with MG][Clean][LessLoad]\duke_loads_adj_pf94.glm"
     )
     utk_p = [7978, 2825, 6842, 6530]  # Unit: kW
     utk_p_sum = sum(utk_p)  # Unit: kW
-    utk_pf = 0.98
+    utk_pf = 0.94
 
     # ==Test & Demo
     p = GlmParser()
@@ -760,7 +761,7 @@ def test_read_inv_names():
 if __name__ == "__main__":
     # test_add_ufls_gfas()
     # test_separate_load_objs()
-    # test_adjust_load_amount()
+    test_adjust_load_amount()
     # test_read_content_load()
     # test_read_content_node()
     # test_read_zone_info()
@@ -770,4 +771,4 @@ if __name__ == "__main__":
     # test_pick_node_from_segments()
     # test_load_zone_info()
 
-    test_read_inv_names()
+    # test_read_inv_names()
