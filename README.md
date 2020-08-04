@@ -1,5 +1,6 @@
 # tool-scripts
-Tool Scripts for GridLAB-D &amp; OpenDSS
+Tool Scripts for GridLAB-D &amp; OpenDSS<br/>
+Latest updates on the python scripts for GridLAB-D can be found here: https://github.com/gridlab-d/tools/tree/master/python_scripts
 
 ## GridLAB-D
 
